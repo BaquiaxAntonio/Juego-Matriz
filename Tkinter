@@ -1,0 +1,171 @@
+import random
+import time
+import tkinter as tk
+from tkinter import messagebox
+
+def generar_tablero(n):
+    tablero = []
+    for _ in range(n):
+        fila = [random.randint(0, 11) for _ in range(n)]
+        tablero.append(fila)
+    return tablero
+
+def calcular_resultado(tablero, fila, columna):
+    n = len(tablero)
+    suma = 0
+    for i in range(fila - 1, fila + 2):
+        for j in range(columna - 1, columna + 2):
+            if 0 <= i < n and 0 <= j < n:
+                suma += tablero[i][j]
+    resultado = suma * tablero[fila][columna]
+    return resultado
+
+def mostrar_respuestas(respuestas):
+    respuestas_str = [str(respuesta) for respuesta in respuestas]
+    return "\n".join(respuestas_str)
+
+def mostrar_marcador(puntajes, nombres):
+    marcador_str = f"{nombres[0]}: {puntajes[0]} puntos\n{nombres[1]}: {puntajes[1]} puntos"
+    return marcador_str
+
+class MatrizAritmeticaGUI:
+    def __init__(self):
+        self.nombres = ["", ""]
+        self.puntajes = [0, 0]
+        self.participaciones = 0
+        self.tablero = []
+        self.oculto = []
+        self.turno = 0
+        self.tiempo_limite = 25
+        self.tiempo_inicial = 0
+        self.respuestas = []
+
+        self.root = tk.Tk()
+        self.root.title("Matriz Aritmética")
+
+        self.label_nombres = tk.Label(self.root, text="Jugador 1:        Jugador 2:")
+        self.label_nombres.pack()
+
+        self.entry_nombres = tk.Entry(self.root)
+        self.entry_nombres.pack()
+
+        self.button_nombres = tk.Button(self.root, text="Iniciar juego", command=self.iniciar_juego)
+        self.button_nombres.pack()
+
+        self.label_tablero = tk.Label(self.root)
+        self.label_tablero.pack()
+
+        self.label_marcador = tk.Label(self.root)
+        self.label_marcador.pack()
+
+        self.label_pregunta = tk.Label(self.root)
+        self.label_pregunta.pack()
+
+        self.entry_respuesta = tk.Entry(self.root)
+        self.entry_respuesta.pack()
+
+        self.button_respuesta = tk.Button(self.root, text="Responder", command=self.responder)
+        self.button_respuesta.pack()
+
+        self.root.mainloop()
+
+    def iniciar_juego(self):
+        nombres_str = self.entry_nombres.get()
+        self.nombres = nombres_str.split(",")
+        self.participaciones = int(input("Ingrese la cantidad de participaciones por jugador: "))
+
+        self.tablero = generar_tablero(3)  # Tablero inicial de 3x3 (puedes cambiar el tamaño si deseas)
+        self.oculto = [[True] * 3 for _ in range(3)]  # Inicializar todo el tablero como oculto
+
+        self.mostrar_tablero()
+        self.mostrar_marcador()
+
+        self.label_nombres.config(text=f"{self.nombres[0]}:        {self.nombres[1]}:")
+        self.entry_nombres.config(state=tk.DISABLED)
+        self.button_nombres.config(state=tk.DISABLED)
+
+        self.siguiente_turno()
+
+    def mostrar_tablero(self):
+        tablero_str = ""
+        for i in range(3):
+            for j in range(3):
+                if self.oculto[i][j]:
+                    tablero_str += "? "
+                else:
+                    tablero_str += str(self.tablero[i][j]) + " "
+            tablero_str += "\n"
+        self.label_tablero.config(text=tablero_str)
+
+    def mostrar_marcador(self):
+        marcador_str = f"{self.nombres[0]}: {self.puntajes[0]} puntos\n{self.nombres[1]}: {self.puntajes[1]} puntos"
+        self.label_marcador.config(text=marcador_str)
+
+    def siguiente_turno(self):
+        if self.turno < self.participaciones:
+            self.oculto = [[True] * 3 for _ in range(3)]  # Ocultar todo el tablero
+            self.label_pregunta.config(text="")
+            self.entry_respuesta.delete(0, tk.END)
+            self.entry_respuesta.config(state=tk.NORMAL)
+            self.button_respuesta.config(state=tk.NORMAL)
+
+            self.mostrar_tablero()
+            self.mostrar_marcador()
+
+            jugador_actual = self.turno % 2
+            self.label_pregunta.config(text=f"Turno de {self.nombres[jugador_actual]}")
+
+            fila = random.randint(0, 2)
+            columna = random.randint(0, 2)
+            self.oculto[fila][columna] = False
+
+            resultado = calcular_resultado(self.tablero, fila, columna)
+            self.respuestas = [resultado + random.randint(-10, 10) for _ in range(4)]
+            self.respuestas[random.randint(0, 3)] = resultado  # Colocar el resultado correcto en una posición aleatoria
+
+            self.mostrar_tablero()
+            self.label_pregunta.config(text=f"Turno de {self.nombres[jugador_actual]}\n"
+                                             f"¿Cuál es el resultado de la operación?")
+            self.label_pregunta.config(text=f"Turno de {self.nombres[jugador_actual]}\n"
+                                             f"¿Cuál es el resultado de la operación?\n"
+                                             f"{mostrar_respuestas(self.respuestas)}")
+
+            self.tiempo_inicial = time.time()
+            self.root.after(1000, self.actualizar_tiempo)
+        else:
+            self.mostrar_resultado_final()
+
+    def actualizar_tiempo(self):
+        tiempo_restante = self.tiempo_limite - (time.time() - self.tiempo_inicial)
+        if tiempo_restante > 0:
+            self.label_pregunta.config(text=f"Turno de {self.nombres[self.turno % 2]}\n"
+                                             f"¿Cuál es el resultado de la operación?\n"
+                                             f"{mostrar_respuestas(self.respuestas)}\n"
+                                             f"Tiempo restante: {int(tiempo_restante)} segundos")
+            self.root.after(1000, self.actualizar_tiempo)
+        else:
+            self.button_respuesta.config(state=tk.DISABLED)
+            self.entry_respuesta.config(state=tk.DISABLED)
+            messagebox.showinfo("Tiempo agotado", "¡Tiempo agotado! No se acumulan puntos en este turno.")
+            self.siguiente_turno()
+
+    def responder(self):
+        respuesta = int(self.entry_respuesta.get())
+        jugador_actual = self.turno % 2
+        resultado = calcular_resultado(self.tablero, self.oculto.index([False]), self.oculto[self.oculto.index([False])].index(False))
+
+        if respuesta == resultado:
+            messagebox.showinfo("Respuesta correcta", "¡Respuesta correcta! +3 puntos")
+            self.puntajes[jugador_actual] += 3
+        else:
+            messagebox.showinfo("Respuesta incorrecta", "Respuesta incorrecta. Sigue intentando.")
+
+        self.turno += 1
+        self.siguiente_turno()
+
+    def mostrar_resultado_final(self):
+        resultado_final_str = f"¡{self.nombres[0]} es el ganador!" if self.puntajes[0] > self.puntajes[1] else \
+            f"¡{self.nombres[1]} es el ganador!" if self.puntajes[1] > self.puntajes[0] else "¡Empate!"
+        messagebox.showinfo("Resultado final", resultado_final_str)
+
+MatrizAritmeticaGUI()
