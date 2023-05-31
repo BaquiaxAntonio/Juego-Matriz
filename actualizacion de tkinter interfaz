@@ -1,0 +1,160 @@
+import tkinter as tk
+from tkinter import messagebox
+import random
+import time
+
+
+class MatrizAritmeticaGUI:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("Matriz Aritmética")
+        self.root.geometry("500x400")
+
+        self.label_nombres = tk.Label(self.root, text="Ingresa los nombres de los jugadores:")
+        self.label_nombres.pack()
+
+        self.entry_nombres = tk.Entry(self.root)
+        self.entry_nombres.pack()
+
+        self.label_participaciones = tk.Label(self.root, text="Ingresa la cantidad de participaciones:")
+        self.label_participaciones.pack()
+
+        self.entry_participaciones = tk.Entry(self.root)
+        self.entry_participaciones.pack()
+
+        self.button_iniciar = tk.Button(self.root, text="Iniciar", command=self.iniciar_juego)
+        self.button_iniciar.pack()
+
+        self.root.mainloop()
+
+    def iniciar_juego(self):
+        nombres = self.entry_nombres.get().split(",")
+        participaciones = int(self.entry_participaciones.get())
+
+        self.root.destroy()
+
+        juego = JuegoMatrizAritmetica(nombres, participaciones)
+
+
+class JuegoMatrizAritmetica:
+    def __init__(self, nombres, participaciones):
+        self.nombres = nombres
+        self.participaciones = participaciones
+        self.puntajes = [0] * len(nombres)
+        self.turno = 0
+
+        self.oculto = [[True] * 3 for _ in range(3)]
+        self.tablero = [[random.randint(1, 9) for _ in range(3)] for _ in range(3)]
+        self.respuestas = []
+
+        self.tiempo_inicial = 0
+        self.tiempo_limite = 10
+
+        self.root = tk.Tk()
+        self.root.title("Matriz Aritmética")
+        self.root.geometry("500x400")
+
+        self.label_tablero = tk.Label(self.root, text="", font=("Arial", 14))
+        self.label_tablero.pack()
+
+        self.label_marcador = tk.Label(self.root, text="", font=("Arial", 16))
+        self.label_marcador.pack()
+
+        self.label_pregunta = tk.Label(self.root, text="", font=("Arial", 16))
+        self.label_pregunta.pack()
+
+        self.entry_respuesta = tk.Entry(self.root, font=("Arial", 14))
+        self.entry_respuesta.pack()
+
+        self.button_respuesta = tk.Button(self.root, text="Responder", font=("Arial", 14), command=self.responder)
+        self.button_respuesta.pack()
+
+        self.mostrar_tablero()
+        self.mostrar_marcador()
+        self.siguiente_turno()
+
+        self.root.mainloop()
+
+    def mostrar_tablero(self):
+        tablero_str = ""
+        for i in range(3):
+            for j in range(3):
+                if self.oculto[i][j]:
+                    tablero_str += "? "
+                else:
+                    tablero_str += str(self.tablero[i][j]) + " "
+            tablero_str += "\n"
+        self.label_tablero.config(text=tablero_str, font=("Arial", 14))
+
+    def mostrar_marcador(self):
+        marcador_str = "Marcador:\n"
+        for i, nombre in enumerate(self.nombres):
+            marcador_str += f"{nombre}: {self.puntajes[i]} puntos\n"
+        self.label_marcador.config(text=marcador_str, font=("Arial", 16))
+
+    def siguiente_turno(self):
+        if self.turno < self.participaciones:
+            self.respuestas = []
+            self.tiempo_inicial = time.time()
+            self.generar_pregunta()
+            self.mostrar_tablero()
+        else:
+            self.mostrar_resultado_final()
+
+    def generar_pregunta(self):
+        pregunta = random.choice(["suma", "resta"])
+        a = random.randint(1, 9)
+        b = random.randint(1, 9)
+
+        if pregunta == "suma":
+            resultado = a + b
+            self.respuestas.append(resultado)
+            self.label_pregunta.config(text=f"{a} + {b} = ?", font=("Arial", 16))
+        else:
+            resultado = a - b
+            self.respuestas.append(resultado)
+            self.label_pregunta.config(text=f"{a} - {b} = ?", font=("Arial", 16))
+
+    def responder(self):
+        tiempo_actual = time.time()
+        tiempo_transcurrido = tiempo_actual - self.tiempo_inicial
+
+        if tiempo_transcurrido > self.tiempo_limite:
+            self.mostrar_respuesta_correcta()
+        else:
+            respuesta_jugador = int(self.entry_respuesta.get())
+            if respuesta_jugador in self.respuestas:
+                self.label_pregunta.config(text="¡Respuesta correcta!", font=("Arial", 14))
+                self.puntajes[self.turno % len(self.nombres)] += 1
+            else:
+                self.label_pregunta.config(text="Respuesta incorrecta", font=("Arial", 14))
+                self.puntajes[self.turno % len(self.nombres)] -= 1
+            self.entry_respuesta.delete(0, tk.END)
+            self.mostrar_marcador()
+            self.turno += 1
+            self.root.after(2000, self.siguiente_turno)
+
+    def mostrar_respuesta_correcta(self):
+        respuesta_correcta = self.respuestas.index(max(self.respuestas))
+        self.label_pregunta.config(f"¡Tiempo agotado!\nLa respuesta correcta era {respuesta_correcta}",
+                                   font=("Arial", 14))
+        self.puntajes[self.turno % len(self.nombres)] -= 1
+        self.mostrar_marcador()
+        self.turno += 1
+        self.root.after(2000, self.siguiente_turno)
+
+    def mostrar_resultado_final(self):
+        ganador = self.nombres[self.puntajes.index(max(self.puntajes))]
+        resultado_str = f"¡Fin del juego!\n\nPuntajes:\n"
+        for i, nombre in enumerate(self.nombres):
+            resultado_str += f"{nombre}: {self.puntajes[i]} puntos\n"
+        if self.puntajes.count(max(self.puntajes)) > 1:
+            resultado_str += "Empate"
+        else:
+            resultado_str += f"Ganador: {ganador}"
+        messagebox.showinfo("Resultado", resultado_str)
+        self.root.destroy()
+
+
+if __name__ == "__main__":
+    juego = MatrizAritmeticaGUI()
